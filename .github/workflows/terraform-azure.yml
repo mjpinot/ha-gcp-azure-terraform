@@ -1,0 +1,64 @@
+name: Terraform — Azure
+
+on:
+  push:
+    branches: [main]
+    paths: ["terraform/azure/**"]
+  pull_request:
+    paths: ["terraform/azure/**"]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  TF_DIR: terraform/azure
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_USE_OIDC: "true"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.5"
+      - name: Init
+        run: terraform -chdir=$TF_DIR init
+      - name: Plan
+        id: plan
+        run: |
+          terraform -chdir=$TF_DIR plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          echo "summary=$(tail -1 plan.txt)" >> $GITHUB_OUTPUT
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('plan.txt', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### Terraform Plan — Azure\n\`\`\`\n${plan.slice(-65000)}\n\`\`\``
+            });
+
+  apply:
+    runs-on: ubuntu-latest
+    needs: plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.5"
+      - name: Init
+        run: terraform -chdir=$TF_DIR init
+      - name: Apply
+        run: terraform -chdir=$TF_DIR apply -auto-approve

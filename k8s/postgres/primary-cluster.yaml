@@ -1,0 +1,48 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-primary
+  namespace: postgres
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+
+  # DB credentials from CSI-mounted secret
+  bootstrap:
+    initdb:
+      database: appdb
+      owner: app
+      secret:
+        name: pg-app-secret   # Kubernetes Secret synced from Azure Key Vault
+
+  postgresql:
+    parameters:
+      max_wal_senders: "10"
+      wal_level: "logical"
+
+  replicationSlots:
+    highAvailability:
+      enabled: true
+    updateInterval: 30
+
+  storage:
+    size: 10Gi
+    storageClass: managed-premium
+
+  # Backup to Azure Blob Storage
+  backup:
+    barmanObjectStore:
+      destinationPath: "https://STORAGE_ACCOUNT.blob.core.windows.net/pg-backup"
+      azureCredentials:
+        connectionString:
+          name: pg-backup-credentials
+          key: connection-string
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+    retentionPolicy: "30d"
+
+  affinity:
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname

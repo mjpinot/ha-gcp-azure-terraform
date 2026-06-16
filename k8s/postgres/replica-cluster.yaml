@@ -1,0 +1,55 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-replica
+  namespace: postgres
+spec:
+  instances: 2
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+
+  # Bootstrap as streaming replica of the AKS primary
+  bootstrap:
+    pg_basebackup:
+      source: pg-primary-aks
+
+  externalClusters:
+    - name: pg-primary-aks
+      connectionParameters:
+        host: AKS_PG_PRIMARY_ENDPOINT   # replace with AKS primary RW service external IP or DNS
+        user: streaming_replica
+        dbname: appdb
+        sslmode: verify-full
+      sslCert:
+        name: pg-replica-tls
+        key: tls.crt
+      sslKey:
+        name: pg-replica-tls
+        key: tls.key
+      sslRootCert:
+        name: pg-replica-tls
+        key: ca.crt
+      password:
+        name: pg-replication-secret
+        key: password
+
+  replica:
+    enabled: true
+    source: pg-primary-aks
+
+  replicationSlots:
+    highAvailability:
+      enabled: true
+
+  storage:
+    size: 10Gi
+    storageClass: standard-rwo
+
+  affinity:
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+
+# ── Promotion procedure ───────────────────────────────────────────────────────
+# To promote this replica to primary (failover):
+#   kubectl cnpg promote pg-replica -n postgres --context <gke-context>
+# Then update the API deployment DB_HOST to:
+#   pg-replica-rw.postgres.svc.cluster.local

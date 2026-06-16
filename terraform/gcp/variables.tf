@@ -1,0 +1,9 @@
+variable "project_id" { type = string }
+variable "region" { type = string }
+variable "cluster_name" { type = string }
+variable "kubernetes_version" { type = string }
+variable "subnet_cidr" { type = string }
+variable "pods_cidr" { type = string }
+variable "services_cidr" { type = string }
+variable "state_bucket" { type = string }
+variable "hostname" { type = string }
