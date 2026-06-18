@@ -1,5 +1,3 @@
-# ha-gcp-azure-terraform
-
 # HA Multi-Cloud Infrastructure on Azure + GCP using Terraform
 
 > Production-ready reference architecture for deploying highly available infrastructure across Microsoft Azure and Google Cloud Platform using Terraform.
