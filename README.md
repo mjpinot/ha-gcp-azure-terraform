@@ -1,62 +1,255 @@
 # ha-gcp-azure-terraform
 
-Multi-cloud HA Kubernetes platform — AKS (Azure, primary) + GKE (GCP, standby).
+# HA Multi-Cloud Infrastructure on Azure + GCP using Terraform
+
+> Production-ready reference architecture for deploying highly available infrastructure across Microsoft Azure and Google Cloud Platform using Terraform.
+
+---
 
 ## Architecture
 
-- **Traffic:** Cloudflare Load Balancing, active/passive failover (AKS → GKE)
-- **Secrets:** Azure Key Vault (AKS) + GCP Secret Manager (GKE) via Secrets Store CSI Driver
-- **Database:** CloudNativePG — primary on AKS, streaming replica on GKE
-- **Apps:** Node.js frontend + Python API, NGINX ingress, Cloudflare proxied
-- **CI/CD:** GitHub Actions, OIDC auth (no stored cloud credentials)
+```text
+                               ┌─────────────────────────┐
+                               │        GitHub           │
+                               │   Source + Actions CI   │
+                               └──────────┬──────────────┘
+                                          │
+                                          │ terraform apply
+                                          ▼
+                ┌────────────────────────────────────────────┐
+                │            Terraform Orchestrator          │
+                │  Providers: AzureRM + Google + Random      │
+                └───────────────┬───────────────┬────────────┘
+                                │               │
+                  ┌─────────────┘               └─────────────┐
+                  ▼                                           ▼
+
+      ┌───────────────────────┐                 ┌────────────────────────┐
+      │         Azure         │                 │          GCP           │
+      │   Primary Region      │                 │     Secondary Region   │
+      ├───────────────────────┤                 ├────────────────────────┤
+      │ Resource Group        │                 │ Project                │
+      │ Virtual Network       │                 │ VPC Network            │
+      │ Subnets               │                 │ Subnets                │
+      │ Load Balancer         │                 │ Load Balancer          │
+      │ Kubernetes / Compute  │◄──── Failover ─►│ Kubernetes / Compute   │
+      │ Monitoring            │                 │ Monitoring             │
+      └───────────┬───────────┘                 └──────────┬─────────────┘
+                  │                                        │
+                  └────────────────┬───────────────────────┘
+                                   ▼
+                     ┌─────────────────────────┐
+                     │      Shared Services    │
+                     │ DNS / State / Secrets   │
+                     │ Observability / Alerts  │
+                     └─────────────────────────┘
+```
+
+## Overview
+
+This repository provisions a multi-cloud, highly available infrastructure topology across Azure and GCP using Terraform.
+
+### Objectives
+
+- High availability across cloud providers
+- Infrastructure as Code (IaC)
+- Automated deployment pipelines
+- Disaster recovery readiness
+- Cost visibility
+- Secure-by-default configuration
+
+---
+
+## Features
+
+- Multi-cloud deployment (Azure + GCP)
+- Terraform modular architecture
+- GitHub Actions integration
+- Failover-ready topology
+- Monitoring and observability
+- Secure secrets handling
+- Environment isolation
+
+---
+
+## Repository Structure
+
+```text
+ha-gcp-azure-terraform/
+├── modules/
+│   ├── azure/
+│   ├── gcp/
+│   ├── network/
+│   └── monitoring/
+├── environments/
+│   ├── dev/
+│   ├── stage/
+│   └── prod/
+├── scripts/
+├── .github/
+│   └── workflows/
+├── main.tf
+├── variables.tf
+├── outputs.tf
+└── README.md
+```
+
+---
 
 ## Prerequisites
 
-- Terraform >= 1.6
-- Azure CLI, authenticated (`az login`)
-- gcloud CLI, authenticated (`gcloud auth application-default login`)
-- kubectl, helm
-- Cloudflare account with Load Balancing enabled (paid)
-- GitHub repository with Actions enabled
+- Terraform >= 1.8
+- Azure subscription
+- GCP project
+- GitHub repository secrets
+- Azure CLI
+- Google Cloud SDK
 
-## Directory Layout
+---
 
-```
-terraform/
-  azure/        # AKS + Key Vault + Azure state backend
-  gcp/          # GKE + Secret Manager + GCS state backend
-  cloudflare/   # LB pools, health checks, DNS, CDN
-  modules/
-    k8s-apps/       # shared: NGINX ingress, namespaces, service accounts
-    cloudnativepg/  # CloudNativePG operator Helm release
-k8s/
-  frontend/     # Deployment, Service, HPA
-  api/          # Deployment, Service, HPA (CSI secret mount)
-  postgres/     # CloudNativePG Cluster manifests (primary + replica)
-apps/
-  frontend/     # Node.js Express app + Dockerfile
-  api/          # Python FastAPI app + Dockerfile
-.github/workflows/
-  terraform-azure.yml
-  terraform-gcp.yml
-  terraform-cloudflare.yml
-  apps.yml
-```
+## Quick Start
 
-## Deployment Order
+### Initialize
 
-1. `terraform/azure/` — provision AKS + Key Vault
-2. `terraform/gcp/` — provision GKE
-3. `terraform/cloudflare/` — wire LB using outputs from steps 1 & 2
-4. Push app images via CI, then `kubectl apply -k k8s/overlays/azure` and `k8s/overlays/gcp`
-
-## Failover Runbook
-
-### Database promotion (GKE becomes primary)
 ```bash
-kubectl cnpg promote pg-replica -n postgres --context <gke-context>
+terraform init
 ```
-Update `DB_HOST` in the API deployment to point to the GKE PostgreSQL service.
 
-### Traffic failover
-Cloudflare Load Balancing automatically fails over when the AKS `/healthz` health check fails for the configured threshold. No manual action required.
+### Validate
+
+```bash
+terraform fmt -recursive
+terraform validate
+```
+
+### Preview
+
+```bash
+terraform plan
+```
+
+### Deploy
+
+```bash
+terraform apply
+```
+
+### Destroy
+
+```bash
+terraform destroy
+```
+
+---
+
+## Deployment Flow
+
+```text
+Commit
+ ↓
+GitHub Actions
+ ↓
+Terraform Validate
+ ↓
+Terraform Plan
+ ↓
+Approval
+ ↓
+Terraform Apply
+ ↓
+Azure + GCP Deployment
+ ↓
+Health Checks
+ ↓
+Monitoring + Alerts
+```
+
+---
+
+## Variables
+
+| Variable | Description |
+|---|---|
+| azure_region | Azure deployment region |
+| gcp_region | GCP deployment region |
+| environment | Environment name |
+| instance_count | Compute replicas |
+
+---
+
+## Outputs
+
+| Output | Description |
+|---|---|
+| cluster_endpoint | Service endpoint |
+| public_ip | Public ingress |
+| monitoring_url | Monitoring dashboard |
+
+---
+
+## Failover Strategy
+
+- Active / Passive topology
+- Health probes
+- DNS redirection
+- Terraform state recovery
+
+---
+
+## Security
+
+- Remote state protection
+- Secret isolation
+- Least privilege access
+- Environment separation
+
+---
+
+## Monitoring
+
+Suggested stack:
+
+- Prometheus
+- Grafana
+- Cloud-native monitoring
+- Alerting
+
+---
+
+## Cost Estimation
+
+Track:
+
+- Compute
+- Networking
+- Storage
+- Monitoring
+- Egress
+
+---
+
+## Troubleshooting
+
+Common commands:
+
+```bash
+terraform state list
+terraform plan
+terraform refresh
+```
+
+---
+
+## Roadmap
+
+- Kubernetes support
+- Cross-region replication
+- Autoscaling
+- Cost optimization
+- Policy as code
+
+---
+
+## License
+
+MIT
