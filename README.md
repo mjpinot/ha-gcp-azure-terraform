@@ -6,6 +6,8 @@
 
 ---
 
+## Architecture
+
 ```mermaid
 flowchart TB
 
@@ -76,44 +78,7 @@ class Shared shared
 
 
 
-## Architecture
 
-```text
-                               ┌─────────────────────────┐
-                               │        GitHub           │
-                               │   Source + Actions CI   │
-                               └──────────┬──────────────┘
-                                          │
-                                          │ terraform apply
-                                          ▼
-                ┌────────────────────────────────────────────┐
-                │            Terraform Orchestrator          │
-                │  Providers: AzureRM + Google + Random      │
-                └───────────────┬───────────────┬────────────┘
-                                │               │
-                  ┌─────────────┘               └─────────────┐
-                  ▼                                           ▼
-
-      ┌───────────────────────┐                 ┌────────────────────────┐
-      │         Azure         │                 │          GCP           │
-      │   Primary Region      │                 │     Secondary Region   │
-      ├───────────────────────┤                 ├────────────────────────┤
-      │ Resource Group        │                 │ Project                │
-      │ Virtual Network       │                 │ VPC Network            │
-      │ Subnets               │                 │ Subnets                │
-      │ Load Balancer         │                 │ Load Balancer          │
-      │ Kubernetes / Compute  │◄──── Failover ─►│ Kubernetes / Compute   │
-      │ Monitoring            │                 │ Monitoring             │
-      └───────────┬───────────┘                 └──────────┬─────────────┘
-                  │                                        │
-                  └────────────────┬───────────────────────┘
-                                   ▼
-                     ┌─────────────────────────┐
-                     │      Shared Services    │
-                     │ DNS / State / Secrets   │
-                     │ Observability / Alerts  │
-                     └─────────────────────────┘
-```
 
 ## Overview
 
