@@ -6,6 +6,76 @@
 
 ---
 
+```mermaid
+flowchart TB
+
+GitHub["GitHub<br/>Source + Actions CI"]
+
+TF["Terraform Orchestrator<br/>Providers: AzureRM + Google + Random"]
+
+GitHub -->|"terraform apply"| TF
+
+subgraph Azure["Azure — Primary Region"]
+direction TB
+
+AZ_RG["Resource Group"]
+AZ_VNET["Virtual Network"]
+AZ_SUB["Subnets"]
+AZ_LB["Load Balancer"]
+AZ_K8S["Kubernetes / Compute"]
+AZ_MON["Monitoring"]
+
+AZ_RG --> AZ_VNET
+AZ_VNET --> AZ_SUB
+AZ_SUB --> AZ_LB
+AZ_LB --> AZ_K8S
+AZ_K8S --> AZ_MON
+
+end
+
+subgraph GCP["GCP — Secondary Region"]
+direction TB
+
+GCP_PROJ["Project"]
+GCP_VPC["VPC Network"]
+GCP_SUB["Subnets"]
+GCP_LB["Load Balancer"]
+GCP_K8S["Kubernetes / Compute"]
+GCP_MON["Monitoring"]
+
+GCP_PROJ --> GCP_VPC
+GCP_VPC --> GCP_SUB
+GCP_SUB --> GCP_LB
+GCP_LB --> GCP_K8S
+GCP_K8S --> GCP_MON
+
+end
+
+TF --> Azure
+TF --> GCP
+
+AZ_K8S <-->|"Failover"| GCP_K8S
+
+Shared["Shared Services<br/>DNS / State / Secrets<br/>Observability / Alerts"]
+
+Azure --> Shared
+GCP --> Shared
+
+classDef cicd fill:#24292f,color:#fff,stroke:#000
+classDef tf fill:#623CE4,color:#fff,stroke:#000
+classDef azure fill:#0078D4,color:#fff,stroke:#000
+classDef gcp fill:#34A853,color:#fff,stroke:#000
+classDef shared fill:#F9AB00,color:#000,stroke:#000
+
+class GitHub cicd
+class TF tf
+class AZ_RG,AZ_VNET,AZ_SUB,AZ_LB,AZ_K8S,AZ_MON azure
+class GCP_PROJ,GCP_VPC,GCP_SUB,GCP_LB,GCP_K8S,GCP_MON gcp
+class Shared shared
+```
+
+
+
 ## Architecture
 
 ```text
