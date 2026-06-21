@@ -109,25 +109,65 @@ This repository provisions a multi-cloud, highly available infrastructure topolo
 
 ## Repository Structure
 
-```text
-ha-gcp-azure-terraform/
-├── modules/
-│   ├── azure/
-│   ├── gcp/
-│   ├── network/
-│   └── monitoring/
-├── environments/
-│   ├── dev/
-│   ├── stage/
-│   └── prod/
-├── scripts/
-├── .github/
-│   └── workflows/
-├── main.tf
-├── variables.tf
-├── outputs.tf
-└── README.md
+```mermaid
+flowchart TB
+
+ROOT["ha-gcp-azure-terraform/"]
+
+ROOT --> MODULES["modules/"]
+ROOT --> ENVS["environments/"]
+ROOT --> SCRIPTS["scripts/"]
+ROOT --> GITHUB[".github/"]
+ROOT --> MAIN["main.tf"]
+ROOT --> VARS["variables.tf"]
+ROOT --> OUTPUTS["outputs.tf"]
+ROOT --> README["README.md"]
+
+subgraph MODULE_TREE["modules/"]
+direction TB
+AZ["azure/"]
+GCP["gcp/"]
+NET["network/"]
+MON["monitoring/"]
+
+MODULES --> AZ
+MODULES --> GCP
+MODULES --> NET
+MODULES --> MON
+end
+
+subgraph ENV_TREE["environments/"]
+direction TB
+DEV["dev/"]
+STAGE["stage/"]
+PROD["prod/"]
+
+ENVS --> DEV
+ENVS --> STAGE
+ENVS --> PROD
+end
+
+subgraph GITHUB_TREE[".github/"]
+direction TB
+WF["workflows/"]
+
+GITHUB --> WF
+end
+
+classDef root fill:#24292f,color:#fff,stroke:#000
+classDef folder fill:#4CAF50,color:#fff,stroke:#000
+classDef terraform fill:#623CE4,color:#fff,stroke:#000
+classDef config fill:#F9AB00,color:#000,stroke:#000
+
+class ROOT root
+
+class MODULES,ENVS,SCRIPTS,GITHUB folder
+class AZ,GCP,NET,MON,DEV,STAGE,PROD,WF folder
+
+class MAIN,VARS,OUTPUTS terraform
+class README config
 ```
+
 
 ---
 
